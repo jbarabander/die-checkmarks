@@ -1,0 +1,14 @@
+{
+    "name": "Die Checkmarks!",
+    "description": "Get rid of those annoying checkmark comments on youtube!",
+    "version": "1.0",
+    "manifest_version": 3,
+    "content_scripts": [{
+        "js": ["contentScript.js"],
+        "matches": ["https://www.youtube.com/*"]
+    }],
+    "web_accessible_resources": [{
+        "resources": ["removeCheckmarkComments.js"],
+        "matches": ["https://www.youtube.com/*"]
+      }]
+  }
