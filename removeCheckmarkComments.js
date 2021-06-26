@@ -3,13 +3,13 @@ const commentSectionClass = '.ytd-item-section-renderer';
 
 (function() {
 
-    function checkIfShill(contentText) {
-        return contentText.startsWith('https://www.youtube.com');
+    function checkShill(contentText) {
+        return contentText.startsWith('https://www.youtube.com') || contentText.startsWith('https://youtu.be');
     }
-    function checkComment(content) {
-        const commentRenderer = content?.commentThreadRenderer?.comment?.commentRenderer;
+    function checkComment(comment) {
+        const commentRenderer = comment?.commentRenderer;
         return commentRenderer?.authorIsChannelOwner 
-        || (commentRenderer?.authorCommentBadge?.authorCommentBadgeRenderer?.iconTooltip !== "Verified" && (commentRenderer?.contentText?.runs || []).map(({ text }) => text).every((text) => !checkIfShill(text)))
+        || (commentRenderer?.authorCommentBadge?.authorCommentBadgeRenderer?.iconTooltip !== "Verified" && (commentRenderer?.contentText?.runs || []).map(({ text }) => text).every((text) => !checkShill(text)))
     }
     const originalOpen = XMLHttpRequest.prototype.open;
     XMLHttpRequest.prototype.open = function(method, url, ...rest) {
@@ -18,7 +18,9 @@ const commentSectionClass = '.ytd-item-section-renderer';
                 if ( this.readyState === 4 ) {
                    const parsedResponse = JSON.parse(event.target.responseText);
                    if(parsedResponse.response?.continuationContents?.itemSectionContinuation?.contents) {
-                        const onlyNonVerifiedOrAuthor = parsedResponse.response.continuationContents.itemSectionContinuation.contents.filter(checkComment);
+                        const onlyNonVerifiedOrAuthor = parsedResponse.response.continuationContents.itemSectionContinuation.contents.filter((content) => {
+                            return checkComment(content?.commentThreadRenderer?.comment);
+                        });
 
                         parsedResponse.response.continuationContents.itemSectionContinuation.contents = onlyNonVerifiedOrAuthor;
                         Object.defineProperty(this, 'response',     {writable: true});
@@ -33,9 +35,13 @@ const commentSectionClass = '.ytd-item-section-renderer';
                     const text = event.target.responseText;
                    const parsedResponse = JSON.parse(event.target.response);
                    if(parsedResponse?.[1]?.response?.continuationContents?.commentRepliesContinuation?.contents) {
-                        JSON.stringify(parsedResponse?.[1]?.response?.continuationContents?.commentRepliesContinuation?.contents);
-                        const onlyVerifiedComments = parsedResponse?.[1]?.response?.continuationContents?.commentRepliesContinuation?.contents.filter(checkComment);
-                        console.log(onlyVerifiedComments);
+                        const onlyUnwantedCommentIndices = parsedResponse?.[1]?.response?.continuationContents?.commentRepliesContinuation?.contents.reduce((acc, content, index) => {
+                            if(!checkComment(content)) {
+                                acc.push(index);
+                            }
+                            return acc;
+                        }, []);
+                        console.log(onlyUnwantedCommentIndices);
                         // console.log(text.includes(parsedResponse?.[1]?.response?.continuationContents?.commentRepliesContinuation?.contents));
                         // const onlyNonVerifiedOrAuthor = parsedResponse?.[1]?.response?.continuationContents?.commentRepliesContinuation?.contents.filter(checkComment);
                         // parsedResponse[1].response.continuationContents.commentRepliesContinuation.contents = onlyNonVerifiedOrAuthor;
